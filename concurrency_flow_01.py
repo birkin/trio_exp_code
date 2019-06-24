@@ -2,8 +2,10 @@
 based on <https://stackoverflow.com/a/56696955/1876709>
 """
 
+import time
 from random import random
-import time, asks, trio
+
+import asks, trio
 
 
 snd_input, rcv_input = trio.open_memory_channel(0)
