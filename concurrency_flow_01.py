@@ -11,14 +11,14 @@ import asks, trio
 # snd_input, rcv_input = trio.open_memory_channel(0)
 # snd_output, rcv_output = trio.open_memory_channel(0)
 
-reader_input, reader_output = trio.open_memory_channel(0)
-saver_input, saver_output = trio.open_memory_channel(0)
+reader_channel_input, reader_channel_output = trio.open_memory_channel(0)
+saver_channel_input, saver_channel_output = trio.open_memory_channel(0)
 
 async def read_entries():
-    async with reader_input:
+    async with reader_channel_input:
         for key_entry in range(5):
             print( f'reading key `{key_entry}`' )
-            await reader_input.send(key_entry)
+            await reader_channel_input.send(key_entry)
             # await trio.sleep(1)
 
 ## original
@@ -30,16 +30,16 @@ async def read_entries():
 
 ## passing worker-number to output
 async def work(n):
-    print( f'reader_output, `{reader_output}`; worker, `{n}`' )
-    async for key_entry in reader_output:
-        # print( f'reader_output currently, `{reader_output}`' )  # not useful, just the addresses of the same channel and buffer; don't know if contents can be viewed on-the-fly
+    print( f'reader_channel_output, `{reader_channel_output}`; worker, `{n}`' )
+    async for key_entry in reader_channel_output:
+        # print( f'reader_channel_output currently, `{reader_channel_output}`' )  # not useful, just the addresses of the same channel and buffer; don't know if contents can be viewed on-the-fly
         print( f'posting key `{key_entry}` from worker `{n}` at time `{time.monotonic()}`' )
         r = await asks.post(f"https://httpbin.org/delay/{5 * random()}")
         print( f'r.url, ```{r.url}```' )
-        await saver_input.send( f'sending output from response... key, `{key_entry}`; response-code, `{r.status_code}`; worker, `{n}`; time, `{time.monotonic()}`' )
+        await saver_channel_input.send( f'sending output from response... key, `{key_entry}`; response-code, `{r.status_code}`; worker, `{n}`; time, `{time.monotonic()}`' )
 
 async def save_entries():
-    async for entry in saver_output:
+    async for entry in saver_channel_output:
         # print( "saving", entry )
         print( f'saving entry `{entry}`' )
 
@@ -47,8 +47,8 @@ async def main():
     async with trio.open_nursery() as nursery:
         nursery.start_soon(read_entries)
         nursery.start_soon(save_entries)
-        async with saver_input:
-            print( f'saver_input, `{saver_input}`' )
+        async with saver_channel_input:
+            print( f'saver_channel_input, `{saver_channel_input}`' )
             async with trio.open_nursery() as workers:
                 for n in range(3):
                     print( f'worker `{n}` instantiated' )
